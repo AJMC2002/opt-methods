@@ -5,9 +5,9 @@ pub mod lab1 {
 
     use crate::FloatingType;
 
-    type _SquareMatrixN<const N: usize> =
+    pub type _SquareMatrixN<const N: usize> =
         SquareMatrix<FloatingType, Const<N>, ArrayStorage<FloatingType, N, N>>;
-    type _VectorN<const N: usize> =
+    pub type _VectorN<const N: usize> =
         Vector<FloatingType, Const<N>, ArrayStorage<FloatingType, N, 1>>;
 
     pub fn new_positive_definite_matrix<const N: usize>(

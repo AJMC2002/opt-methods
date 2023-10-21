@@ -1,4 +1,5 @@
-use log2::info;
+use chrono::Local;
+use log2::{debug, info};
 use nalgebra::Vector6;
 use plotters::prelude::*;
 use std::error::Error;
@@ -11,6 +12,7 @@ const MIN: FloatingType = -10.0;
 const MAX: FloatingType = 10.0;
 const LAMBDA: FloatingType = 0.0001;
 const EPSILON: FloatingType = 0.00001;
+const PLOT_DIR: &str = "plots";
 
 fn main() -> Result<(), Box<dyn Error>> {
     let _log2 = log2::open("output.log").start();
@@ -107,7 +109,13 @@ impl<const N: usize> Function<N> {
 }
 
 fn plot_steps(f_x_steps: Vec<FloatingType>) -> Result<(), Box<dyn Error>> {
-    let root = BitMapBackend::new(&"plots/0.png", (640, 480)).into_drawing_area();
+    let path = format!(
+        "{}/{}.png",
+        PLOT_DIR,
+        Local::now().format("%Y-%m-%d %H:%M:%S")
+    );
+    debug!("Generating plot at \'{}\'", path);
+    let root = BitMapBackend::new(path.as_str(), (900, 750)).into_drawing_area();
     root.fill(&WHITE)?;
     let (y_min, y_max) = (
         *f_x_steps
@@ -122,20 +130,25 @@ fn plot_steps(f_x_steps: Vec<FloatingType>) -> Result<(), Box<dyn Error>> {
     let mut chart = ChartBuilder::on(&root)
         .caption(
             "Зависимости значения функции от номера шага методом градиентного спуска",
-            ("sans-serif", 50).into_font(),
+            ("sans-serif", 22).into_font(),
         )
-        .margin(5)
-        .x_label_area_size(30)
-        .y_label_area_size(30)
+        .margin(10)
+        .x_label_area_size(50)
+        .y_label_area_size(70)
         .build_cartesian_2d(0..f_x_steps.len(), y_min..y_max)?;
 
-    chart.configure_mesh().draw()?;
+    chart
+        .configure_mesh()
+        .x_desc("i [шаг]")
+        .y_desc("f(xi)")
+        .draw()?;
 
     let ls = LineSeries::new(f_x_steps.iter().enumerate().map(|(i, f)| (i, *f)), &RED);
+
     chart
         .draw_series(ls)?
-        .label("f(x)")
-        .legend(|(x, y)| PathElement::new(vec![(x, y), (x + 100, y)], RED));
+        .label("f(xi)")
+        .legend(|(x, y)| PathElement::new(vec![(x, y), (x + 20, y)], RED));
 
     chart
         .configure_series_labels()

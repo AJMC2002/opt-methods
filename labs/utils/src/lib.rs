@@ -5,21 +5,21 @@ pub mod lab1 {
 
     use crate::FloatingType;
 
-    pub type _SquareMatrixN<const N: usize> =
+    pub type __GenericSquareMatrix<const N: usize> =
         SquareMatrix<FloatingType, Const<N>, ArrayStorage<FloatingType, N, N>>;
-    pub type _VectorN<const N: usize> =
+    pub type __GenericVector<const N: usize> =
         Vector<FloatingType, Const<N>, ArrayStorage<FloatingType, N, 1>>;
 
     pub fn new_positive_definite_matrix<const N: usize>(
         min: FloatingType,
         max: FloatingType,
-    ) -> _SquareMatrixN<N>
+    ) -> __GenericSquareMatrix<N>
     where
         Const<N>: DimMin<Const<N>, Output = Const<N>>,
     {
         loop {
-            let m = (max - min) * _SquareMatrixN::<N>::new_random()
-                + _SquareMatrixN::<N>::from_element(min);
+            let m = (max - min) * __GenericSquareMatrix::<N>::new_random()
+                + __GenericSquareMatrix::<N>::from_element(min);
             if m.determinant() > 0 as FloatingType {
                 return m.transpose() * m;
             }
@@ -27,13 +27,13 @@ pub mod lab1 {
     }
 
     pub fn gradient_method<const N: usize, F>(
-        x0: &_VectorN<N>,
+        x0: &__GenericVector<N>,
         lambda: FloatingType,
         epsilon: FloatingType,
         f_prime: F,
-    ) -> Vec<_VectorN<N>>
+    ) -> Vec<__GenericVector<N>>
     where
-        F: Fn(&_VectorN<N>) -> _VectorN<N>,
+        F: Fn(&__GenericVector<N>) -> __GenericVector<N>,
     {
         let mut x_log = vec![*x0];
         loop {

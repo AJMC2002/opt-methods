@@ -3,6 +3,11 @@
     margin: (x: 1in, y: 1in),
 )
 
+#set par(
+  first-line-indent: 1em,
+  justify: true,
+)
+
 = Постановка задачи
 
 Минимизировать функцию $f(x)=1/2 x^T A x + b x$, где $x in RR^6$,
@@ -65,7 +70,7 @@ $ x_("точ") = -A^(-1) b = vec(
 
 = Метод градиента
 
-$x_(k+1) = x_k - lambda f'(x_k)$, где $lambda = 10^(-4)$
+$ x_(k+1) = x_k - lambda f'(x_k), " где " lambda = 10^(-4) $
 
 Первая производная функции: $f'(x) = 1/2 (A^T + A) x + b$
 
@@ -158,11 +163,33 @@ $ Delta(f(x_m), f(x_("точ"))) = 0.004266869738321688 $
     supplement: "Рисунок"  
 )
 
-Следует отметить, что график не точно отражает реальное значение f(x) при приближении к точному значению.
+Следует отметить, что график не точно отражает реальное значение $f(x_("точ"))$ при приближении к точному значению. Вот почему было явно определено значение $f(x_("точ"))$, которое составляет примерно -14.149271102339297, и это значение, к которому сходится функция.
 
 = Приложения
 
+Приложение для этой работы было разделено на две части. Сначала была создана библиотека общего назначения, содержащая модуль под названием «lab1», содержащий все функции алгоритма. Затем основной файл бинарного файла содержит вызовы функций для генерации матрицы, расчета и регистрации необходимых значений, а также создания графика рассчитанных значений.
+
+Весь исходный код этого приложения можно найти по адресу https://github.com/AJMC2002/opt-methods/tree/main/labs.
+
+== Зависимости
+
+- chrono = "0.4.31" --- для регистрации в логгере времени каждого запуска.
+- log2 = "0.1.10" --- библиотека ведения логов.
+- nalgebra = "0.32.3" --- библиотека линейной алгебры.
+- plotters = "0.3.5" --- библиотека построения графиков.
+- utils = { path = "../utils" } --- пользовательская библиотека с алгоритмами, используемыми для этой работы.
+
+== Библиотека
+
+Библиотека использует три пользовательских враппер-типа: ```rust type FloatingType```, ```rust type __GenericSquareMatrix<const N: usize>``` и
+```rust type __GenericVector<const N: usize>```. Они определяют общую степень точности, которой будут обладать наши значения, и быстрый способ записи универсальных типов матриц постоянного размера и векторов соответственно.
+
+Первая функция ```rust fn new_positive_definite_matrix``` генерирует случайную обратимую матрицу $M$, для которой все ее элементы ограничены аргументами `min` и `max`, затем возвращает положительно определенную матрицу $M^T M$.
+
+Далее ```rust fn gradient_method```  принимает наш начальный вектор $x_0$, параметры итерации и функцию первой производной от $f(x)$, чтобы вернуть вектор всех векторов $x_i$, полученных в нашем итерационном процессе.
+
 ```rust
+// utils/src/lib.rs
 pub type FloatingType = f64;
 
 pub mod lab1 {
@@ -212,5 +239,129 @@ pub mod lab1 {
         }
         x_log
     }
+}
+```
+
+== Бинарный
+
+Для наших вычислений нам нужно получить $f(x), f'(x), f ^(-1)(x)$. Была определена структура для хранения этих различных определений функций с учетом их параметров $A$ и $b$.
+
+```rs
+// minimization/src/main.rs
+struct Function<const N: usize> {
+    a: __GenericSquareMatrix<N>,
+    b: __GenericVector<N>,
+}
+
+impl<const N: usize> Function<N> {
+    fn new(a: __GenericSquareMatrix<N>, b: __GenericVector<N>) -> Self {
+        Self { a, b }
+    }
+
+    pub fn f(&self, x: &__GenericVector<N>) -> FloatingType {
+        (x.transpose() * self.a * x)[(0, 0)] / 2 as FloatingType + self.b.dotc(x)
+    }
+    pub fn f_prime(&self, x: &__GenericVector<N>) -> __GenericVector<N> {
+        (self.a + self.a.transpose()) * x / 2 as FloatingType + self.b
+    }
+
+    pub fn f_prime_inv(&self, f_prime_val: __GenericVector<N>) -> __GenericVector<N> {
+        2 as FloatingType
+            * (self.a.transpose() + self.a).try_inverse().unwrap()
+            * (f_prime_val - self.b)
+    }
+}
+```
+
+Следующая основная функция в конечном итоге оказывается довольно простой. Мы получаем нашу случайную матрицу $A$ и векторы $b$ и $x_0$, получаем нужные нам результаты, регистрируем их и генерируем наш график \*.
+
+\* _Была написана пользовательская функция ```rs fn plot_steps```, но поскольку ее реализация на самом деле не входит в рамки данной работы, она не будет обсуждаться подробно._
+
+```rs
+// minimization/src/main.rs
+use chrono::Local;
+use log2::{debug, info};
+use nalgebra::{matrix, vector, Vector6};
+use plotters::prelude::*;
+use std::error::Error;
+use utils::{
+    lab1::{__GenericSquareMatrix, __GenericVector, gradient_method, new_positive_definite_matrix},
+    FloatingType,
+};
+
+const MIN: FloatingType = -10.0;
+const MAX: FloatingType = 10.0;
+const LAMBDA: FloatingType = 0.0001;
+const EPSILON: FloatingType = 0.00001;
+
+fn main() -> Result<(), Box<dyn Error>> {
+    let _log2 = log2::open("output.log").start();
+
+    let a = new_positive_definite_matrix::<6>(MIN, MAX);
+    let b = (MAX - MIN) * Vector6::new_random() + Vector6::from_element(MIN);
+    let x0 = (MAX - MIN) * Vector6::new_random() + Vector6::from_element(MIN);
+
+    let function = Function::new(a, b);
+
+    let x_steps = gradient_method(&x0, LAMBDA, EPSILON, |x| function.f_prime(x));
+    let x_exact = function.f_prime_inv(Vector6::zeros());
+
+    let steps = x_steps.len() - 1;
+    let intermediate_results = [
+        x_steps[0],
+        x_steps[steps / 4],
+        x_steps[steps / 2],
+        x_steps[3 * steps / 4],
+        x_steps[steps],
+    ];
+
+    info!("a {}", a);
+    info!("b {}", b);
+    info!("x0 {}", x0);
+    info!("tochnoe {}", x_exact);
+    info!("xm {}", x_steps.last().unwrap());
+    info!("m (steps) {}", steps);
+    info!(
+        "intermediate steps\n{}",
+        intermediate_results
+            .iter()
+            .enumerate()
+            .map(|(i, it)| format!("x_{{{}m/{}}}\n{}", i, intermediate_results.len() - 1, it))
+            .collect::<Vec<String>>()
+            .join("")
+    );
+    info!("x (exact solution) {}", x_exact);
+    info!(
+        "f(intermediate steps)\n{}",
+        intermediate_results
+            .iter()
+            .enumerate()
+            .map(|(i, it)| format!(
+                "f(x_{{{}m/{}}}) = {}\n",
+                i,
+                intermediate_results.len() - 1,
+                function.f(it)
+            ))
+            .collect::<Vec<String>>()
+            .join("")
+    );
+    info!("f(x) (exact solution) = {}", function.f(&x_exact));
+    info!(
+        "abs diff x vector = {}",
+        (x_steps.last().unwrap() - x_exact).map(FloatingType::abs)
+    );
+    info!(
+        "abs diff f(x) = {}",
+        (function.f(x_steps.last().unwrap()) - function.f(&x_exact)).abs()
+    );
+
+    plot_steps(
+        x_steps
+            .iter()
+            .map(|x| function.f(x))
+            .collect::<Vec<FloatingType>>(),
+    )?;
+
+    Ok(())
 }
 ```

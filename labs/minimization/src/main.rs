@@ -141,9 +141,12 @@ fn plot_steps(f_x_steps: Vec<FloatingType>) -> Result<(), Box<dyn Error>> {
         PLOT_DIR,
         Local::now().format("%Y-%m-%d %H:%M:%S")
     );
+
     debug!("Generating plot at \'{}\'", path);
+
     let root = BitMapBackend::new(path.as_str(), (900, 750)).into_drawing_area();
     root.fill(&WHITE)?;
+
     let (y_min, y_max) = (
         *f_x_steps
             .iter()
@@ -157,6 +160,7 @@ fn plot_steps(f_x_steps: Vec<FloatingType>) -> Result<(), Box<dyn Error>> {
     let x_rg = -(f_x_steps.len() as FloatingType * 0.05) as i64
         ..(f_x_steps.len() as FloatingType * 1.05) as i64;
     let y_rg = y_min - 0.05 * y_max.abs()..y_max + 0.05 * y_max.abs();
+
     let mut chart = ChartBuilder::on(&root)
         .caption(
             "Зависимость значения функции от номера шага методом градиентного спуска",

@@ -7,7 +7,7 @@
 
 #set align(center)
 
-#image("/report/fefu_logo.jpg", width: 4%)
+#image("./fefu_logo.jpg", width: 4%)
 
 #text(
     size: 10pt,

@@ -73,7 +73,8 @@ library
     -- Other library packages from which modules are imported.
     build-depends:    
         base ^>=4.17.2.0,
-        massiv
+        massiv,
+        parallel
 
     -- Directories containing source files.
     hs-source-dirs:   lib
@@ -97,9 +98,10 @@ executable minimization2
     -- Other library packages from which modules are imported.
     build-depends:
         base ^>=4.17.2.0,
+        minimization2,
         massiv,
         random,
-        minimization2
+        parallel
 
     -- Directories containing source files.
     hs-source-dirs:   exe

@@ -1,5 +1,6 @@
 module Function (Functions (..), mkFunctions) where
 
+import Control.Parallel.Strategies (NFData)
 import Data.Massiv.Array as A
 import Utils
 import Prelude as P
@@ -19,6 +20,7 @@ mkFunctions ::
     , NumericFloat r e
     , Load r Ix2 e
     , Eq e
+    , NFData e
     ) =>
     Matrix r e ->
     Vector r e ->
@@ -42,7 +44,7 @@ f' matA vecB vecX = 0.5 * ((vecX ><! matA) !.! vecX) + vecB !.! vecX
 fPrime' :: (NumericFloat r e, Manifest r e) => Matrix r e -> Vector r e -> Vector r e -> Vector r e
 fPrime' matA vecB vecX = compute (matA !>< vecX) !+! vecB
 
-fPrimeInv' :: (Manifest r e, NumericFloat r e, Eq e, Load r Ix2 e) => Matrix r e -> Vector r e -> Vector r e -> Vector r e
+fPrimeInv' :: (Manifest r e, NumericFloat r e, Eq e, Load r Ix2 e, NFData e) => Matrix r e -> Vector r e -> Vector r e -> Vector r e
 fPrimeInv' matA vecB vecFX = compute $ inverse matA !>< (vecFX !-! vecB)
 
 g' :: (FoldNumeric r e, Source r e, NumericFloat r e) => e -> Vector r e -> Vector r e -> e

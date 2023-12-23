@@ -1,7 +1,7 @@
 module Minimization (Minimization (..), mkMinimization) where
 
+import Control.Parallel.Strategies (NFData)
 import Data.Massiv.Array as A
-import Debug.Trace (trace)
 import Function (Functions (..), mkFunctions)
 import Utils (identity, inverse, split, zeros)
 import Prelude as P
@@ -19,6 +19,8 @@ mkMinimization ::
     , Load r Ix2 e
     , Ord e
     , Prim e
+    , Show e
+    , NFData e
     ) =>
     Matrix r e ->
     Vector r e ->
@@ -30,7 +32,7 @@ mkMinimization matA vecB vecX0 r epsilon =
     Minimization
         { getFunctions = functions
         , yIsZero = yIsZero' n functions
-        , yIsGreaterThanZero = yIsGreaterThanZero' n matA vecX0 epsilon functions
+        , yIsGreaterThanZero = yIsGreaterThanZero' n matA epsilon functions
         }
   where
     Sz2 n _ = size matA
@@ -47,15 +49,16 @@ yIsGreaterThanZero' ::
     , Load r Ix2 e
     , Prim e
     , Ord e
+    , Show e
+    , NFData e
     ) =>
     Int ->
     Matrix r e ->
-    Vector r e ->
     e ->
     Functions r e ->
     Vector r e ->
     Vector r e
-yIsGreaterThanZero' n matA vecX0 epsilon functions vecXk0 = computeP $ recur vecXk0 (0 :: Int)
+yIsGreaterThanZero' n matA epsilon functions vecXk0 = computeP $ recur vecXk0 (0 :: Int)
   where
     recur :: Vector r e -> Int -> Vector r e
     recur xk k
@@ -73,6 +76,6 @@ yIsGreaterThanZero' n matA vecX0 epsilon functions vecXk0 = computeP $ recur vec
             up = computeP @P $ concat' 1 [upL, upR]
             down = computeP @P $ concat' 1 [downL, downR]
             upL = matA !+! ((2 * y) *. identity n)
-            upR = computeP $ resize' (Sz2 n 1) (2.0 *. (x !-! vecX0))
-            downL = transpose upR
+            upR = resize' (Sz2 n 1) $ gPrime functions x
+            downL = resize' (Sz2 1 n) $ gPrime functions x
             downR = singleton 0

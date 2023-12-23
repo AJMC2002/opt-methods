@@ -1,8 +1,10 @@
 module Main where
 
+import Control.Parallel.Strategies (parMap, rpar)
 import Data.Massiv.Array as A
 import Function (Functions (..))
 import Minimization (Minimization (..), mkMinimization)
+import System.IO
 import System.Random qualified as R
 import Utils (split)
 import Prelude as P
@@ -12,9 +14,9 @@ main =
     let
         -- Initial values
         salt = 190902
-        gen = R.mkStdGen salt
-        (gen1, gen') = R.split gen
-        (gen2, gen3) = R.split gen'
+        gen1 = R.mkStdGen salt
+        gen2 = snd $ R.split gen1
+        gen3 = snd $ R.split gen2
         rng = (-10 :: Double, 10)
         comp = ParN 0
         dim = 4
@@ -44,31 +46,33 @@ main =
                         xy
                 )
                 gs
-        xySols = P.map (split . yIsGreaterThanZero minimization) xy0s
-        fXY = P.map (f funs . fst) xySols
+        xySols = parMap rpar (split . yIsGreaterThanZero minimization) xy0s
+        fXY = parMap rpar (f funs . fst) xySols
      in
         do
-            putStrLn "A"
-            print matA
-            putStrLn "b"
-            print vecB
-            putStrLn "x0"
-            print vecX0
-            putStrLn "r"
-            print r
-            putStrLn "y = 0"
-            putStrLn "Solution"
-            print vecXSus
-            putStrLn "Minimal value"
-            print fSus
-            putStrLn "Distance to centre"
-            print distanceToCentre
-            putStrLn "Is in sphere?"
-            print isInSphere
-            putStrLn "y > 0"
-            putStrLn "Initial vectors"
-            print xy0s
-            putStrLn "Solutions"
-            print xySols
-            putStrLn "Minimal values"
-            print fXY
+            handle <- openFile "output.txt" WriteMode
+            hPutStrLn handle "A"
+            hPrint handle matA
+            hPutStrLn handle "b"
+            hPrint handle vecB
+            hPutStrLn handle "x0"
+            hPrint handle vecX0
+            hPutStrLn handle "r"
+            hPrint handle r
+            hPutStrLn handle "** y = 0 **"
+            hPutStrLn handle "Solution"
+            hPrint handle vecXSus
+            hPutStrLn handle "Minimal value"
+            hPrint handle fSus
+            hPutStrLn handle "Distance to centre"
+            hPrint handle distanceToCentre
+            hPutStrLn handle "Is in sphere?"
+            hPrint handle isInSphere
+            hPutStrLn handle "** y > 0 **"
+            hPutStrLn handle "Initial vectors"
+            hPrint handle xy0s
+            hPutStrLn handle "Solutions"
+            hPrint handle xySols
+            hPutStrLn handle "Minimal values"
+            hPrint handle fXY
+            hClose handle

@@ -1,0 +1,43 @@
+cabal-version:      3.0
+name:               optimization3
+version:            0.1.0.0
+-- synopsis:
+-- description:
+license:            MIT
+license-file:       LICENSE
+author:             AJMC2002
+maintainer:         adrianmosquera2015@gmail.com
+-- copyright:
+category:           Math
+build-type:         Simple
+extra-doc-files:    CHANGELOG.md
+-- extra-source-files:
+
+common warnings
+    ghc-options: -Wall
+
+library
+    import:           warnings
+    exposed-modules: Optimization.DirectTask, Formst 
+    other-modules: Utils
+    -- other-extensions:
+    build-depends:    
+        base ^>=4.17.2.0,
+        massiv >= 1.0.4 && < 1.1,
+        parallel >= 3.2.2 && < 3.3,
+    hs-source-dirs:   src, ../minimization-2/lib
+    default-language: GHC2021
+
+executable optimization3
+    import:           warnings
+    main-is:          Main.hs
+    other-modules: Utils
+    -- other-extensions:
+    build-depends:
+        base ^>=4.17.2.0,
+        optimization3,
+        massiv >= 1.0.4 && < 1.1,
+        random >= 1.2.1 && < 1.3,
+        parallel >= 3.2.2 && < 3.3
+    hs-source-dirs:   exe, ../minimization-2/lib
+    default-language: GHC2021

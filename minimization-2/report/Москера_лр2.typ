@@ -232,201 +232,184 @@ $ f_("min")(x) = -138.21816218494826 $
 
 = Приложения (Я.П.: Haskell)
 
-Приложение для этой работы было разделено на две части. Сначала была создана библиотека общего назначения, содержащая модуль под названием «lab1», содержащий все функции алгоритма. Затем основной файл бинарного файла содержит вызовы функций для генерации матрицы, расчета и регистрации необходимых значений, а также создания графика рассчитанных значений.
-
 Весь исходный код этого приложения можно найти по адресу https://github.com/AJMC2002/opt-methods/tree/main.
 
 == Зависимости
 
-- chrono = "0.4.31" --- для регистрации в логгере времени каждого запуска.
-- log2 = "0.1.10" --- библиотека ведения логов.
-- nalgebra = "0.32.3" --- библиотека линейной алгебры.
-- plotters = "0.3.5" --- библиотека построения графиков.
-- utils = { path = "../utils" } --- пользовательская библиотека с алгоритмами, используемыми для этой работы.
+
+- base ^>=4.17.2.0
+- massiv >= 1.0.4 && < 1.1
+- parallel >= 3.2.2 && < 3.3
+- random >= 1.2.1 && < 1.3
+- minimization2 --- пользовательская библиотека с алгоритмами, используемыми для этой работы.
 
 == Библиотека
 
-Библиотека использует три пользовательских враппер-типа: ```rust type FloatingType```, ```rust type __GenericSquareMatrix<const N: usize>``` и
-```rust type __GenericVector<const N: usize>```. Они определяют общую степень точности, которой будут обладать наши значения, и быстрый способ записи универсальных типов матриц постоянного размера и векторов соответственно.
+```haskell
+-- lib/Minimization.hs
+module Minimization (Minimization (..), mkMinimization) where
 
-Первая функция ```rust fn new_positive_definite_matrix``` генерирует случайную обратимую матрицу $M$, для которой все ее элементы ограничены аргументами `min` и `max`, затем возвращает положительно определенную матрицу $M^T M$.
+import Control.Parallel.Strategies (NFData)
+import Data.Massiv.Array as A
+import Function (Functions (..), mkFunctions)
+import Utils (identity, inverse, split, zeros)
+import Prelude as P
 
-Далее ```rust fn gradient_method```  принимает наш начальный вектор $x_0$, параметры итерации и функцию первой производной от $f(x)$, чтобы вернуть вектор всех векторов $x_i$, полученных в нашем итерационном процессе.
-
-```rust
-// utils/src/lib.rs
-pub type FloatingType = f64;
-
-pub mod lab1 {
-    use nalgebra::{ArrayStorage, Const, DimMin, SquareMatrix, Vector};
-
-    use crate::FloatingType;
-
-    pub type __GenericSquareMatrix<const N: usize> =
-        SquareMatrix<FloatingType, Const<N>, ArrayStorage<FloatingType, N, N>>;
-    pub type __GenericVector<const N: usize> =
-        Vector<FloatingType, Const<N>, ArrayStorage<FloatingType, N, 1>>;
-
-    pub fn new_positive_definite_matrix<const N: usize>(
-        min: FloatingType,
-        max: FloatingType,
-    ) -> __GenericSquareMatrix<N>
-    where
-        Const<N>: DimMin<Const<N>, Output = Const<N>>,
-    {
-        loop {
-            let m = (max - min) * __GenericSquareMatrix::<N>::new_random()
-                + __GenericSquareMatrix::<N>::from_element(min);
-            if m.determinant() > 0 as FloatingType {
-                return m.transpose() * m;
-            }
-        }
+data Minimization r e = Minimization
+    { getFunctions :: Functions r e
+    , yIsZero :: Vector r e
+    , yIsGreaterThanZero :: Vector r e -> Vector r e
     }
 
-    pub fn gradient_method<const N: usize, F>(
-        x0: &__GenericVector<N>,
-        lambda: FloatingType,
-        epsilon: FloatingType,
-        f_prime: F,
-    ) -> Vec<__GenericVector<N>>
-    where
-        F: Fn(&__GenericVector<N>) -> __GenericVector<N>,
-    {
-        let mut x_log = vec![*x0];
-        loop {
-            let x = x_log.last().unwrap();
-            let x_next = x - lambda * f_prime(x);
-            if (x_next - x).norm() < epsilon {
-                break;
-            } else {
-                x_log.push(x_next)
-            }
+mkMinimization ::
+    ( NumericFloat r e
+    , Manifest r e
+    , Load r Ix1 e
+    , Load r Ix2 e
+    , Ord e
+    , Prim e
+    , Show e
+    , NFData e
+    ) =>
+    Matrix r e ->
+    Vector r e ->
+    Vector r e ->
+    e ->
+    e ->
+    Minimization r e
+mkMinimization matA vecB vecX0 r epsilon =
+    Minimization
+        { getFunctions = functions
+        , yIsZero = yIsZero' n functions
+        , yIsGreaterThanZero = yIsGreaterThanZero' n matA epsilon functions
         }
-        x_log
-    }
-}
+  where
+    Sz2 n _ = size matA
+    functions = mkFunctions matA vecB vecX0 r
+
+yIsZero' :: (NumericFloat r e, Load r Ix1 e) => Int -> Functions r e -> Vector r e
+yIsZero' n functions = fPrimeInv functions $ zeros $ Sz1 n
+
+yIsGreaterThanZero' ::
+    forall r e.
+    ( NumericFloat r e
+    , Manifest r e
+    , Load r Ix1 e
+    , Load r Ix2 e
+    , Prim e
+    , Ord e
+    , Show e
+    , NFData e
+    ) =>
+    Int ->
+    Matrix r e ->
+    e ->
+    Functions r e ->
+    Vector r e ->
+    Vector r e
+yIsGreaterThanZero' n matA epsilon functions vecXk0 = computeP $ recur vecXk0 (0 :: Int)
+  where
+    recur :: Vector r e -> Int -> Vector r e
+    recur xk k
+        | k >= 10000 || normL2 (xkNext !-! xk) <= epsilon = xk
+        | otherwise = recur xkNext (k + 1)
+      where
+        (x, y) = split xk
+        xkNext = xk !-! computeP (inverse fPrimeXk !>< fXk)
+        fXk = computeP @P $ concat' 1 [up, down]
+          where
+            up = lagrangePrimeX functions x y
+            down = singleton $ g functions x
+        fPrimeXk = computeP @P $ concat' 2 [up, down]
+          where
+            up = computeP @P $ concat' 1 [upL, upR]
+            down = computeP @P $ concat' 1 [downL, downR]
+            upL = matA !+! ((2 * y) *. identity n)
+            upR = resize' (Sz2 n 1) $ gPrime functions x
+            downL = resize' (Sz2 1 n) $ gPrime functions x
+            downR = singleton 0
 ```
 
 == Бинарный
 
-Для наших вычислений нам нужно получить $f(x), f'(x), (f')^(-1)(x)$. Была определена структура для хранения этих различных определений функций с учетом их параметров $A$ и $b$.
+```haskell
+-- exe/Main.hs
+module Main where
 
-```rs
-// minimization/src/main.rs
-struct Function<const N: usize> {
-    a: __GenericSquareMatrix<N>,
-    b: __GenericVector<N>,
-}
+import Control.Parallel.Strategies (parMap, rpar)
+import Data.Massiv.Array as A
+import Function (Functions (..))
+import Minimization (Minimization (..), mkMinimization)
+import System.IO
+import System.Random qualified as R
+import Utils (split)
+import Prelude as P
 
-impl<const N: usize> Function<N> {
-    fn new(a: __GenericSquareMatrix<N>, b: __GenericVector<N>) -> Self {
-        Self { a, b }
-    }
-
-    pub fn f(&self, x: &__GenericVector<N>) -> FloatingType {
-        (x.transpose() * self.a * x)[(0, 0)] / 2 as FloatingType + self.b.dotc(x)
-    }
-    pub fn f_prime(&self, x: &__GenericVector<N>) -> __GenericVector<N> {
-        (self.a + self.a.transpose()) * x / 2 as FloatingType + self.b
-    }
-
-    pub fn f_prime_inv(&self, f_prime_val: __GenericVector<N>) -> __GenericVector<N> {
-        2 as FloatingType
-            * (self.a.transpose() + self.a).try_inverse().unwrap()
-            * (f_prime_val - self.b)
-    }
-}
-```
-
-Следующая основная функция в конечном итоге оказывается довольно простой. Мы получаем нашу случайную матрицу $A$ и векторы $b$ и $x_0$, получаем нужные нам результаты, регистрируем их и генерируем наш график \*.
-
-\* _Была написана пользовательская функция ```rs fn plot_steps```, но поскольку ее реализация на самом деле не входит в рамки данной работы, она не будет обсуждаться подробно._
-
-```rs
-// minimization/src/main.rs
-use chrono::Local;
-use log2::{debug, info};
-use nalgebra::{matrix, vector, Vector6};
-use plotters::prelude::*;
-use std::error::Error;
-use utils::{
-    lab1::{__GenericSquareMatrix, __GenericVector, gradient_method, new_positive_definite_matrix},
-    FloatingType,
-};
-
-const MIN: FloatingType = -10.0;
-const MAX: FloatingType = 10.0;
-const LAMBDA: FloatingType = 0.0001;
-const EPSILON: FloatingType = 0.000001;
-
-fn main() -> Result<(), Box<dyn Error>> {
-    let _log2 = log2::open("output.log").start();
-
-    let a = new_positive_definite_matrix::<6>(MIN, MAX);
-    let b = (MAX - MIN) * Vector6::new_random() + Vector6::from_element(MIN);
-    let x0 = (MAX - MIN) * Vector6::new_random() + Vector6::from_element(MIN);
-
-    let function = Function::new(a, b);
-
-    let x_steps = gradient_method(&x0, LAMBDA, EPSILON, |x| function.f_prime(x));
-    let x_exact = function.f_prime_inv(Vector6::zeros());
-
-    let steps = x_steps.len() - 1;
-    let intermediate_results = [
-        x_steps[0],
-        x_steps[steps / 4],
-        x_steps[steps / 2],
-        x_steps[3 * steps / 4],
-        x_steps[steps],
-    ];
-
-    info!("a {}", a);
-    info!("b {}", b);
-    info!("x0 {}", x0);
-    info!("tochnoe {}", x_exact);
-    info!("xm {}", x_steps.last().unwrap());
-    info!("m (steps) {}", steps);
-    info!(
-        "intermediate steps\n{}",
-        intermediate_results
-            .iter()
-            .enumerate()
-            .map(|(i, it)| format!("x_{{{}m/{}}}\n{}", i, intermediate_results.len() - 1, it))
-            .collect::<Vec<String>>()
-            .join("")
-    );
-    info!("x (exact solution) {}", x_exact);
-    info!(
-        "f(intermediate steps)\n{}",
-        intermediate_results
-            .iter()
-            .enumerate()
-            .map(|(i, it)| format!(
-                "f(x_{{{}m/{}}}) = {}\n",
-                i,
-                intermediate_results.len() - 1,
-                function.f(it)
-            ))
-            .collect::<Vec<String>>()
-            .join("")
-    );
-    info!("f(x) (exact solution) = {}", function.f(&x_exact));
-    info!(
-        "abs diff x vector = {}",
-        (x_steps.last().unwrap() - x_exact).map(FloatingType::abs)
-    );
-    info!(
-        "abs diff f(x) = {}",
-        (function.f(x_steps.last().unwrap()) - function.f(&x_exact)).abs()
-    );
-
-    plot_steps(
-        x_steps
-            .iter()
-            .map(|x| function.f(x))
-            .collect::<Vec<FloatingType>>(),
-    )?;
-
-    Ok(())
-}
+main :: IO ()
+main =
+    let
+        -- Initial values
+        salt = 190902
+        gen1 = R.mkStdGen salt
+        gen2 = snd $ R.split gen1
+        gen3 = snd $ R.split gen2
+        rng = (-10 :: Double, 10)
+        comp = ParN 0
+        dim = 4
+        tempA = computeP $ uniformRangeArray gen1 rng comp (Sz2 dim dim) :: Matrix P Double
+        matA = (tempA !+! computeP (transpose tempA)) ./ 2 -- this generates a symmetric matrix
+        vecB = computeP $ uniformRangeArray gen2 rng comp (Sz1 dim)
+        vecX0 = computeP $ uniformRangeArray gen3 rng comp (Sz dim)
+        r = 5
+        epsilon = 1.0e-6
+        minimization = mkMinimization matA vecB vecX0 r epsilon
+        funs = getFunctions minimization
+        -- Part 1 | When y = 0
+        vecXSus = yIsZero minimization -- podozritel'niy
+        fSus = f funs vecXSus
+        distanceToCentre = normL2 (vecXSus !-! vecX0)
+        isInSphere = distanceToCentre <= r
+        -- Part 2 | When y > 0
+        numPoints = 8
+        gs = P.tail $ P.take (numPoints + 1) $ iterate (snd . R.split) gen3
+        xy0s =
+            P.map
+                ( \g ->
+                    let
+                        xy' = computeP @P $ uniformRangeArray g rng comp (Sz1 dim + 1)
+                        xy = makeArray @P (ParN 0) (Sz1 dim + 1) (\i -> if i == dim then abs (xy' ! i) else xy' ! i)
+                     in
+                        xy
+                )
+                gs
+        xySols = parMap rpar (split . yIsGreaterThanZero minimization) xy0s
+        fXY = parMap rpar (f funs . fst) xySols
+     in
+        do
+            handle <- openFile "output.txt" WriteMode
+            hPutStrLn handle "A"
+            hPrint handle matA
+            hPutStrLn handle "b"
+            hPrint handle vecB
+            hPutStrLn handle "x0"
+            hPrint handle vecX0
+            hPutStrLn handle "r"
+            hPrint handle r
+            hPutStrLn handle "** y = 0 **"
+            hPutStrLn handle "Solution"
+            hPrint handle vecXSus
+            hPutStrLn handle "Minimal value"
+            hPrint handle fSus
+            hPutStrLn handle "Distance to centre"
+            hPrint handle distanceToCentre
+            hPutStrLn handle "Is in sphere?"
+            hPrint handle isInSphere
+            hPutStrLn handle "** y > 0 **"
+            hPutStrLn handle "Initial vectors"
+            hPrint handle xy0s
+            hPutStrLn handle "Solutions"
+            hPrint handle xySols
+            hPutStrLn handle "Minimal values"
+            hPrint handle fXY
+            hClose handle
 ```

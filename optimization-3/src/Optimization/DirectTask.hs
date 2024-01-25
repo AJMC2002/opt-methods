@@ -83,10 +83,10 @@ printSimplexData :: (Matrix P Double, [(Int, Int, Double)]) -> IO (Matrix P Doub
 printSimplexData
     (simplex, pivots) = do
         let (row, col, val) = last pivots
-        putStrLn $ "\"разрешающая строка\" = \"№\"" ++ show (row + 1)
-        putStrLn $ "\"разрешающий столбец\" = \"№\"" ++ show (col + 1)
-        putStrLn $ "\"разрешающий элемент\" = " ++ show val
-        putStrLn $ showMat simplex 2
+        putStrLn $ "\"разрешающая строка\" = \"№\"" ++ (show (row + 1)) ++ "\\"
+        putStrLn $ "\"разрешающий столбец\" = \"№\"" ++ (show (col + 1)) ++ "\\"
+        putStrLn $ "\"разрешающий элемент\" = " ++ (show val) ++ "\\"
+        putStrLn $ "script(" ++ showMat simplex 2 ++ ")\\"
         return (simplex, pivots)
 
 getOptSol :: Sz2 -> (Matrix P Double, [(Int, Int, Double)]) -> (Vector P Double, Double)

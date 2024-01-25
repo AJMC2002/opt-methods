@@ -1,0 +1,45 @@
+cabal-version:      3.0
+name:               matrix-game4
+version:            0.1.0.0
+-- synopsis:
+-- description:
+license:            MIT
+license-file:       LICENSE
+author:             AJMC2002
+maintainer:         adrianmosquera2015@gmail.com
+-- copyright:
+category:           Math
+build-type:         Simple
+extra-doc-files:    CHANGELOG.md
+-- extra-source-files:
+
+common config
+    ghc-options: -Wall
+    default-language: GHC2021
+
+library
+    import:           config
+    exposed-modules:  MatrixGame
+    -- other-extensions:
+    build-depends:    
+                    base ^>=4.17.2.0,
+                    massiv
+    hs-source-dirs:   lib
+
+executable matrix-game4
+    import:           config
+    main-is:          Main.hs
+    other-modules: 
+        Utils,
+        Formst,
+        Optimization.DirectTask,
+        Optimization.DualTask
+    -- other-extensions:
+    build-depends:
+        base ^>=4.17.2.0,
+        matrix-game4,
+        massiv,
+        random,
+        parallel
+
+    hs-source-dirs:   exe, ../minimization-2/lib, ../optimization-3/src

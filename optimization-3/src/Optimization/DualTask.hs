@@ -60,8 +60,8 @@ solveDual a b c = do
 solveHelper :: Matrix P Double -> Vector P Double -> IO (Matrix P Double, [(Int, Int, Double)])
 solveHelper a c = do
     putStrLn "Вспомогательная задача"
-    putStrLn $ "Pre-simplex: " ++ showMat simplex' 2
-    putStrLn $ showMat simplex 2
+    putStrLn $ "Pre-simplex: script(" ++ showMat simplex' 2 ++ ")"
+    putStrLn $ "script(" ++ showMat simplex 2 ++ ")"
     (finalSimplex, pivots) <- getNextSimplex (simplex, [])
     let (!optSol, _) = getOptSol (size $ A.transpose a) (finalSimplex, pivots)
     putStrLn $ "\"Оптимальное решение\" = " ++ showVec optSol 2 ++ "\n"

@@ -18,7 +18,7 @@ common warnings
 
 library
     import:           warnings
-    exposed-modules: Optimization.DirectTask, Formst 
+    exposed-modules: Optimization.DirectTask, Optimization.DualTask, Formst 
     other-modules: Utils
     -- other-extensions:
     build-depends:    
@@ -31,7 +31,6 @@ library
 executable optimization3
     import:           warnings
     main-is:          Main.hs
-    other-modules: Utils
     -- other-extensions:
     build-depends:
         base ^>=4.17.2.0,

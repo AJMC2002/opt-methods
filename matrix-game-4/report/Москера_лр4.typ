@@ -604,7 +604,7 @@ $ underline("Результат") $
 = Приложение (Я.П.: Haskell)
 
 ```haskell
-lib/MatrixGame.hs
+-- lib/MatrixGame.hs
 module MatrixGame where
 
 import Data.Massiv.Array as A
@@ -618,7 +618,7 @@ highStrategy a = minimum $ P.map (maximum' . (a !>)) [0 .. (i - 1)] where Sz2 i 
 ```
 
 ```haskell
-exe/Main.hs
+-- exe/Main.hs
 module Main where
 
 import Data.Massiv.Array as A

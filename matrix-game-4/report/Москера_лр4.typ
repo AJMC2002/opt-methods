@@ -98,7 +98,7 @@ mat(
 $
 
 Нижняя цена игры:
-$ underline(A) = op("max", limits:#true)_i op("min", limits:#true)_j a_(i j) = 15.07696759937367 $
+$ underline(A) = op("max", limits:#true)_i op("min", limits:#true)_j a_(i j) = -21.254878614230552 $
 
 Верхняя цена игры:
 $ overline(A) = op("min", limits:#true)_j op("max", limits:#true)_i a_(i j) = 16.937688915945937 $
@@ -590,18 +590,23 @@ $ underline("Результат") $
   columns: (1fr, 1fr, 1fr),
   [ $ x = vec( 0.00, 0.01, 0.00, 0.01, 0.01, 0.00 ) $ ],
   [ #v(0.04fr) \ $ alpha = 2.4747741869746438e-2 $ \ #v(1fr) ],
-  [ $ p^* = x/||x|| = vec( 0.00, 0.39, 0.00, 0.48, 0.78, 0.00 ) $ ]
+  [ $ p^* = x/(||x||) = vec( 0.00, 0.39, 0.00, 0.48, 0.78, 0.00 ) $ ]
 )
 
 = Ответ
 
-Нижняя цена игры: $underline(A) = 15.07696759937367$\
+Нижняя цена игры: $underline(A) = -21.254878614230552
+$\
 Верхняя цена игры: $overline(A) = 16.937688915945937$\
 Оптимальная стратегия первого игрока: $p^* = vec( 0.00, 0.39, 0.00, 0.48, 0.78, 0.00 )$\
 Оптимальная стратегия игрока: $q^* = vec( 0.77, 0.00, 0.50, 0.39, 0.00, 0.00, 0.00, 0.00 )$\
 Цена игры: -3.1672615144038048
 
 = Приложение (Я.П.: Haskell)
+
+Весь исходный код этого приложения можно найти по адресу https://github.com/AJMC2002/opt-methods/tree/main.
+
+== Библиотека
 
 ```haskell
 -- lib/MatrixGame.hs
@@ -611,11 +616,13 @@ import Data.Massiv.Array as A
 import Prelude as P
 
 lowStrategy :: Matrix P Double -> Double
-lowStrategy a = maximum $ P.map (minimum' . (a <!)) [0 .. (j - 1)] where Sz2 _ j = size a
+lowStrategy a = maximum $ P.map (minimum' . (a !>)) [0 .. (i - 1)] where Sz2 i _ = size a
 
 highStrategy :: Matrix P Double -> Double
-highStrategy a = minimum $ P.map (maximum' . (a !>)) [0 .. (i - 1)] where Sz2 i _ = size a
+highStrategy a = minimum $ P.map (maximum' . (a <!)) [0 .. (j - 1)] where Sz2 _ j = size a
 ```
+
+== Бинарный
 
 ```haskell
 -- exe/Main.hs

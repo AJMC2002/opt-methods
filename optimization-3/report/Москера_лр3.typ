@@ -52,7 +52,7 @@
 
         Москера Креспо Адриан Хосуэ
 
-        «24» декабря 2023 г.
+        «26» января 2023 г.
 
         #v(24pt)
 
@@ -588,6 +588,8 @@ underline("Целевая функция") \ 37.486338246050494 $
 
 Весь исходный код этого приложения можно найти по адресу https://github.com/AJMC2002/opt-methods/tree/main.
 
+== Библиотека
+
 ```haskell
 -- src/Optimization/DirectTask.hs
 module Optimization.DirectTask (solveDirect, getNextSimplex, getOptSol, ifBasisDo, isBasis) where
@@ -819,6 +821,8 @@ solveHelper a c = do
                 , computeP @P $ concat' 1 [computeP @P $ A.transpose a, (-1) *. identity n, identity n, resize' (Sz2 n 1) c]
                 ]
 ```
+
+== Бинарный
 
 ```haskell
 -- exe/Main.hs
